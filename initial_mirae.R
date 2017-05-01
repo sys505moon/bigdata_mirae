@@ -1,25 +1,57 @@
+# Need packages
 # install.packages("xlsx")
 # install.packages("data.table")
 # install.packages("ggplot2")
 
+# Library
 library(xlsx)
 library(data.table)
 library(ggplot2)
 
+# directory setting
+getwd()
+setwd("/home/moon/R/bigdata_mirae/Jongho_data")
+
+# read.xlsx 
 data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
 data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
 data[,1] <- as.numeric(data[,1])
 
-data_table <- fread("빅데이터페스티벌DB_S&P종목_001.csv", sep = ',')
+# fread
+end_price <- fread("end_price.csv", sep = ',')
+high_price <- fread("high_price.csv", sep = ',')
+low_price <- fread("low_price.csv", sep = ',')
+volume <- fread("volume.csv", sep = ',')
+PER <- fread("PER.csv", sep = ',')
+PBR <- fread("PBR.csv", sep = ',')
+EPS <- fread("EPS.csv", sep = ',')
+sales <- fread("sales.csv", sep = ',')
+business_profits <- fread("business_profits.csv", sep = ',')
+net_profits <- fread("net_profits.csv", sep = ',')
+sector <- fread("sector.csv", sep = ',')
+market_capital <- fread("market_capital.csv", sep = ',')
+dividend_tendency <- fread("dividend_tendency.csv", sep = ',')
+dividend_rate <- fread("dividend_rate.csv", sep = ',')
+
+
+
+
 data_table$time <- substr(data_table$time, 3, 7)data_table$time <- substr(data_table$time, 3, 7)
 colnames(data_table)[1] <- 'time'
 colnames(data_table)[2] <- 'apple'
 
 
+
+
+
+
+
+# data_View
+
 View(data_table)
 View(data)
 ggplot(data = data_table, aes(x=time, y=apple))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = data, aes(x=data[,1], y=data[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = data, aes(x=data[,1], y=data[,2], group = 1))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
