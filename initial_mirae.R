@@ -1,4 +1,4 @@
-# Need packages
+ # Need packages
 # install.packages("xlsx")
 # install.packages("data.table")
 # install.packages("ggplot2")
@@ -20,6 +20,7 @@ data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
 data[,1] <- as.numeric(data[,1])
 
 # fread
+data <- fread()
 end_price <- fread("end_price.csv", sep = ',')
 high_price <- fread("high_price.csv", sep = ',')
 low_price <- fread("low_price.csv", sep = ',')
@@ -90,12 +91,12 @@ for (i in 1:length(item_strsplit$X1)){
                                                           business_profits[i+1], net_profits[i+1], market_capital[i+1],
                                                           dividend_tendency[i+1], dividend_rate[i+1]))
 }
+
  # group(item) correlation search
 x_AAPL_cor <- rcorr(as.matrix(x_AAPL[2:14]), type = "pearson")$r
+write.csv(x_AAPL_cor, "x_AAPL_cor.csv", row.names = TRUE, fileEncoding = "EUC-KR")
 
 # Income rate calculate
-
-item_bundle <- c(end_price, high_price)
 
 cal_income <- function(){
   income = matrix(c(0), nrow = 204, ncol = 121)
@@ -109,10 +110,12 @@ cal_income <- function(){
 income_rate <- cal_income() # Calculation fot imcome_Ratio
 income_rate[,1] <- end_price$time
 income_rate[,1] <- paste(substr(income_rate[,1], 3, 4), substr(income_rate[,1],6,7), sep = '')
-
-
-
-
+colnames(income_rate) <- colnames(end_price)
+income_rate <- cbind(income_rate, apply(income_rate[,2:121], 1, max, na.rm = TRUE))
+income_rate <- cbind(income_rate, apply(income_rate[,2:121], 1, which.max))
+colnames(income_rate)[122] <- "best_income_rate"
+colnames(income_rate)[123] <- "which.max"
+write.csv(income_rate, "income_rate.csv", fileEncoding = "EUC-KR", row.names = FALSE)
 
 ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
 
