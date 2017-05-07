@@ -15,12 +15,11 @@ getwd()
 setwd("/home/moon/R/bigdata_mirae/Jongho_data")
 
 # read.xlsx 
-data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
-data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
-data[,1] <- as.numeric(data[,1])
+  # data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
+  # data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
+  # data[,1] <- as.numeric(data[,1])
 
 # fread
-data <- fread()
 end_price <- fread("end_price.csv", sep = ',')
 high_price <- fread("high_price.csv", sep = ',')
 low_price <- fread("low_price.csv", sep = ',')
@@ -36,9 +35,9 @@ market_capital <- fread("market_capital.csv", sep = ',')
 dividend_tendency <- fread("dividend_tendency.csv", sep = ',')
 dividend_rate <- fread("dividend_rate.csv", sep = ',')
 
-data_table$time <- substr(data_table$time, 3, 7)data_table$time <- substr(data_table$time, 3, 7)
-colnames(data_table)[1] <- 'time'
-colnames(data_table)[2] <- 'apple'
+  # data_table$time <- substr(data_table$time, 3, 7)data_table$time <- substr(data_table$time, 3, 7)
+  # colnames(data_table)[1] <- 'time'
+  # colnames(data_table)[2] <- 'apple'
 
 # colname change
 
@@ -72,7 +71,8 @@ dividend_tendency <- data.frame(dividend_tendency)
 dividend_rate <- data.frame(dividend_rate)
 
 # group(item) data_integration  
- # * 데이터들을 data.table 에서 data.frame 으로 변형해야 함
+  # ex)x_AAPL 등 종목별로 각 지표(종가, 거래량 등)를 묶음
+  # *주의* 데이터들을 data.table 에서 data.frame 으로 변형해야 함
 item_names <- fread("item names.csv", sep =',', header = T)
 item_names <- t(item_names)
 item_names <- item_names[-1,]
@@ -86,10 +86,20 @@ for (i in 1:length(item_strsplit$X1)){
 }
 
 for (i in 1:length(item_strsplit$X1)){
-  assign(paste("x", item_strsplit[i,1], sep = '_'), cbind(end_price[c(1, 1+i)], high_price[i+1], low_price[i+1],
-                                                          volume[i+1], PER[i+1], PBR[i+1], EPS[i+1], sales[i+1],
-                                                          business_profits[i+1], net_profits[i+1], market_capital[i+1],
-                                                          dividend_tendency[i+1], dividend_rate[i+1]))
+  assign(paste("x", item_strsplit[i,1], sep = '_'), merge(cbind(end_price[c(1, 1+i)], high_price[i+1], low_price[i+1], 
+                                                                volume[i+1], market_capital[i+1], 
+                                                                dividend_tendency[i+1], dividend_rate[i+1]),
+                                                          cbind(PER[c(1,i+1)], PBR[i+1], EPS[i+1], sales[i+1],
+                                                                business_profits[i+1], net_profits[i+1]),
+                                                          by = 'time', all = TRUE ))
+}
+
+ # make data-mart simple colnames
+
+for (i in 1:length(variable_box)){
+  frame <- get(variable_box[i])
+  colnames(frame) <- gsub("_AAPL.UW.Equity", "" , colnames(x_AAPL))
+  assign(variable_box[i], frame)
 }
 
  # group(item) correlation search
@@ -117,8 +127,7 @@ colnames(income_rate)[122] <- "best_income_rate"
 colnames(income_rate)[123] <- "which.max"
 write.csv(income_rate, "income_rate.csv", fileEncoding = "EUC-KR", row.names = FALSE)
 
-ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
-
+ # ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
 
 
 
@@ -131,7 +140,6 @@ ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
 # data_View
 
 
-View(data)
 ggplot(data = data_table, aes(x=time, y=apple))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,2], group = 1))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
