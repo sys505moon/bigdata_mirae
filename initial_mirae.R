@@ -8,11 +8,14 @@
 library(xlsx)
 library(data.table)
 library(ggplot2)
-library(Hmisc)
+library(Hmisc) # rcorr() 쓰기 위함
 
 # directory setting
 getwd()
 setwd("/home/moon/R/bigdata_mirae/Jongho_data")
+setwd("C:/Users/GooYoung/Documents/R/bigdata_mirae/gooyoung_data/")
+ # 재수 경로 입력
+
 
 # read.xlsx 
   # data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
@@ -56,6 +59,7 @@ colnames(dividend_tendency)[2:length(dividend_tendency)] <- paste("dividend_tend
 colnames(dividend_rate)[2:length(dividend_rate)] <- paste("dividend_rate", colnames(dividend_rate)[2:length(dividend_rate)], sep = '_')
 
 # Convert data.frame
+
 end_price <- data.frame(end_price)
 high_price <- data.frame(high_price)
 low_price <- data.frame(low_price)
@@ -73,6 +77,7 @@ dividend_rate <- data.frame(dividend_rate)
 # group(item) data_integration  
   # ex)x_AAPL 등 종목별로 각 지표(종가, 거래량 등)를 묶음
   # *주의* 데이터들을 data.table 에서 data.frame 으로 변형해야 함
+
 item_names <- fread("item names.csv", sep =',', header = T)
 item_names <- t(item_names)
 item_names <- item_names[-1,]
@@ -94,7 +99,7 @@ for (i in 1:length(item_strsplit$X1)){
                                                           by = 'time', all = TRUE ))
 }
 
- # make data-mart simple colnames
+ # make data-mart's(item group data) colnames to simple (delete unnecessary words)
 
 for (i in 1:length(variable_box)){
   frame <- get(variable_box[i])
@@ -103,8 +108,12 @@ for (i in 1:length(variable_box)){
 }
 
  # group(item) correlation search
+
 x_AAPL_cor <- rcorr(as.matrix(x_AAPL[2:14]), type = "pearson")$r
 write.csv(x_AAPL_cor, "x_AAPL_cor.csv", row.names = TRUE, fileEncoding = "EUC-KR")
+
+x_AMZN_cor <- rcorr(as.matrix(x_AMZN[2:14]), type = "pearson")$r
+
 
 # Income rate calculate
 
@@ -130,6 +139,48 @@ write.csv(income_rate, "income_rate.csv", fileEncoding = "EUC-KR", row.names = F
  # ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
 
 
+ # Calculate best income-rate each month in data
+
+    #(1) 리스트로 반환값 (차후 계산시 편리할 것)
+    TopRankItems <- list()
+    TopRankValues <- list()
+    SearchTopRank <- function(x, n){
+      for (i in 1:nrow(x)){
+        TopRankItems[i] <- 0
+        TopRankValues[i] <- 0
+        for (j in 1:n){
+          which <- which.max(x[i,2:121])
+          TopRankItems[[i]][j] <- x[i,2:121][which]
+          TopRankValues[[i]][j] <- colnames(x[,2:121])[which]
+          x[i,2:121][which] <- NA
+        }
+      }
+      basket <- list(TopRankItems, TopRankValues)
+      return(basket)
+    }
+    
+    
+    #(2) data.frame 반환값 (이해하기 편함)
+    TopRankItems <- list()
+    SearchTopRank <- function(x, n){
+      for (i in 1:nrow(x)){
+        TopRankItems[i] <- 0
+        for (j in 1:n){
+          which <- which.max(x[i,2:121])
+          TopRankItems[[i]][j] <- colnames(x[,2:121])[which] 
+          TopRankItems[[i]][j+5] <- x[i,2:121][which]
+          x[i,2:121][which] <- NA
+        }
+      }
+      return(TopRankItems)
+    }
+    BestIncomeRate <- SearchTopRank(income_rate, 5)
+    BestIncomeRate <- data.frame(matrix(unlist(BestIncomeRate), nrow = 5))
+    rownames(BestIncomeRate) <- c("1위", "2위", "3위", "4위", "5위")
+    colnames(BestIncomeRate) <- rep(income_rate[,1], each = 2) 
+                                              # rep(c(1,2), 2)의 결과는 1,2,1,2 이고
+                                              # rep(c(1,2), each =2)의 결과는 1,1,2,2 이다.
+    write.csv(BestIncomeRate, "BestIncomeRate.csv", fileEncoding = "EUC-KR", row.names = TRUE)
 
 
 
@@ -184,3 +235,41 @@ ggplot(data = data, aes(x=data[,1], y=data[,40]))+geom_point()+theme(axis.text.x
 ggplot(data = data, aes(x=data[,1], y=data[,94]))+geom_point()+geom_line()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = data, aes(x=data[,1], y=data[,94]))+geom_line()+theme(axis.text.x = element_text(angle = 45, size = 5))
 
+################################################################################
+############ item-resource correlation analysis_by GooYoung ####################
+################################################################################
+
+resource <- fread("resource.csv")
+resource$time <- substr(resource$time,1,7)
+resource$time <- gsub("-","/",resource$time)
+resource <- as.data.frame(resource)
+
+resource_item <- merge(x=resource,y=end_price,by="time",all=TRUE)
+View(resource_item)
+
+ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+
+rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
+resource_item_cor <- data.frame((rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r)[1:80,])
+resource_item_P <- data.frame((rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$P)[1:80,])
+resource_item_cor <- resource_item_cor[,-c(1:80)]
+resource_item_P <- resource_item_P[,-c(1:80)]
+
+View(resource_item_cor)
+
+(resource_item_cor)
+View(resource_item_P)
+
+
+which(item_resource_P>0.05)
+item_resource_cor[7]
+
+for(i in which(item_resource_P>0.05))(
+  item_resource_cor[i] <- NA
+)
