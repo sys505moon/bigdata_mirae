@@ -14,7 +14,7 @@ library(Hmisc) # rcorr() 쓰기 위함
 getwd()
 setwd("/home/moon/R/bigdata_mirae/Jongho_data")
 setwd("C:/Users/GooYoung/Documents/R/bigdata_mirae/gooyoung_data/")
- # 재수 경로 입력
+setwd("sdasdasd")
 
 
 # read.xlsx 
