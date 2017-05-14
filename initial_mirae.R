@@ -269,6 +269,8 @@ for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
     )
   )
 )
+View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(x >= 0, na.rm = TRUE)})))
+View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(abs(x) >= 0, na.rm = TRUE)})))
 
 View(resource_end_price_cor)
 
