@@ -245,7 +245,29 @@ resource$time <- gsub("-","/",resource$time)
 resource <- as.data.frame(resource)
 
 resource_end_price <- merge(x=resource,y=end_price,by="time",all=TRUE)
-View(resource_end_price)
+# View(resource_end_price)
+
+## rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
+resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[1:80,])
+resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[1:80,])
+resource_end_price_cor <- resource_end_price_cor[,-c(1:80)]
+resource_end_price_P <- resource_end_price_P[,-c(1:80)]
+
+## cut off p-value > 0.05 or abs(correlation) < 0.7
+for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
+  for(j in 1:length(resource_end_price_P))(
+    if (resource_end_price_P[i,j]>0.05|abs(resource_end_price_cor[i,j])<0.7)(
+      resource_end_price_cor[i,j] <- NA
+    )
+  )
+)
+
+resource_item_count <- data.frame("count"=apply(resource_end_price_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)}))
+resource_item_count$Means <- rowMeans(resource_end_price_cor, na.rm = TRUE)
+resource_item_count$sd <- apply(resource_end_price_cor,1,function(x){sd(x,na.rm = TRUE)})
+resource_item_count$summary <- apply(resource_end_price_cor,1,function(x){summary(x)})
+
+View(resource_item_count)
 
 ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
@@ -254,23 +276,3 @@ ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(
 ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
 ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-
-# rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
-resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[1:80,])
-resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[1:80,])
-resource_end_price_cor <- resource_end_price_cor[,-c(1:80)]
-resource_end_price_P <- resource_end_price_P[,-c(1:80)]
-
-# cut off p-value > 0.05 or abs(correlation) < 0.7
-for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
-  for(j in 1:length(resource_end_price_P))(
-    if (resource_end_price_P[i,j]>0.05|abs(resource_end_price_cor[i,j])<0.7)(
-      resource_end_price_cor[i,j] <- NA
-    )
-  )
-)
-View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(x >= 0, na.rm = TRUE)})))
-View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(abs(x) >= 0, na.rm = TRUE)})))
-
-View(resource_end_price_cor)
-
