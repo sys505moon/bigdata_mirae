@@ -273,7 +273,7 @@ View(data.frame("count"=apply(resource_end_price_cor, 2, function(x){result <<- 
 rowMeans(resource_end_price_cor, na.rm = TRUE)
 apply(resource_end_price_cor,1,function(x){sd(x,na.rm = TRUE)})
 
-# 양의 상관관계를 가지는 원자재 - 종목 매트릭스
+### 양의 상관관계를 가지는 원자재 - 종목 매트릭스
 resource_item_positive_cor <- matrix(nrow = 80, ncol = 120)
 rownames(resource_item_positive_cor) <- rownames(resource_end_price_cor)
 colnames(resource_item_positive_cor) <- colnames(resource_end_price_cor)
@@ -286,11 +286,15 @@ for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
     )
   )
 )
+# 원자재 별 상관있는 종목 갯수
+View(data.frame("count"=apply(resource_item_positive_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
+# 종목 별 상관있는 원자재 갯수
+View(data.frame("count"=apply(resource_item_positive_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
 # 양의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차
-rowMeans(resource_item_positive_cor, na.rm = TRUE)
-apply(resource_item_positive_cor,1,function(x){sd(x,na.rm = TRUE)})
+View(as.data.frame(rowMeans(resource_item_positive_cor, na.rm = TRUE)))
+View(as.data.frame(apply(resource_item_positive_cor,1,function(x){sd(x,na.rm = TRUE)})))
 
-# 음의 상관관계를 가지는 원자재 - 종목 매트릭스
+### 음의 상관관계를 가지는 원자재 - 종목 매트릭스
 resource_item_negative_cor <- matrix(nrow = 80, ncol = 120)
 rownames(resource_item_negative_cor) <- rownames(resource_end_price_cor)
 colnames(resource_item_negative_cor) <- colnames(resource_end_price_cor)
@@ -303,9 +307,13 @@ for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
     )
   )
 )
+# 원자재 별 상관있는 종목 갯수
+View(data.frame("count"=apply(resource_item_negative_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
+# 종목 별 상관있는 원자재 갯수
+View(data.frame("count"=apply(resource_item_negative_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
 # 음의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차
-rowMeans(resource_item_negative_cor, na.rm = TRUE)
-apply(resource_item_negative_cor,1,function(x){sd(x,na.rm = TRUE)})
+View(as.data.frame(rowMeans(resource_item_negative_cor, na.rm = TRUE)))
+View(as.data.frame(apply(resource_item_negative_cor,1,function(x){sd(x,na.rm = TRUE)})))
 
 resource_item_count$summary <- apply(resource_end_price_cor,1,function(x){summary(x)})
 apply(resource_end_price_cor,1,function(x){summary(x)})
