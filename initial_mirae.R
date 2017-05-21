@@ -248,8 +248,8 @@ resource_end_price <- merge(x=resource,y=end_price,by="time",all=TRUE)
 # View(resource_end_price)
 
 ## rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
-resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[1:80,])
-resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[1:80,])
+resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[c(1:39,79,80),])
+resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[c(1:39,79,80),])
 resource_end_price_cor <- resource_end_price_cor[,-c(1:80)]
 resource_end_price_P <- resource_end_price_P[,-c(1:80)]
 
@@ -257,7 +257,7 @@ resource_end_price_P <- resource_end_price_P[,-c(1:80)]
 for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
   for(j in 1:length(resource_end_price_P))(
     if (resource_end_price_P[i,j]>0.05|abs(resource_end_price_cor[i,j])<0.7)(
-      resource_end_price_cor[i,j] <- NA
+      resource_end_price_cor[i,j] <- 0
     )
   )
 )
@@ -267,68 +267,131 @@ View(data.frame("count"=apply(resource_end_price_cor, 1, function(x){result <<- 
 # 종목 별 상관있는 원자재 갯수
 View(data.frame("count"=apply(resource_end_price_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
 
+
 # 원자재 별 종목 상관계수의 평균, 표준편차
 # -> 그런데 필요없을듯 ㅇㅇ 왜냐하면 양의 상관계수, 음의 상관계수 섞여있으니까
 # -> 그럼 양의 상관계수만 따로, 음의 상관계수만 따로 해보면 ?
 rowMeans(resource_end_price_cor, na.rm = TRUE)
 apply(resource_end_price_cor,1,function(x){sd(x,na.rm = TRUE)})
 
+
 ### 양의 상관관계를 가지는 원자재 - 종목 매트릭스
-resource_item_positive_cor <- matrix(nrow = 80, ncol = 120)
-rownames(resource_item_positive_cor) <- rownames(resource_end_price_cor)
-colnames(resource_item_positive_cor) <- colnames(resource_end_price_cor)
+resource_end_price_positive_cor <- matrix(nrow = 41, ncol = 120)
+rownames(resource_end_price_positive_cor) <- rownames(resource_end_price_cor)
+colnames(resource_end_price_positive_cor) <- colnames(resource_end_price_cor)
 for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
   for(j in 1:length(resource_end_price_P))(
     if (resource_end_price_P[i,j]>0.05|resource_end_price_cor[i,j]<0.7)(
-      resource_item_positive_cor[i,j] <- NA
+      resource_end_price_positive_cor[i,j] <- 0
     ) else (
-      resource_item_positive_cor[i,j] <- resource_end_price_cor[i,j]
+      resource_end_price_positive_cor[i,j] <- resource_end_price_cor[i,j]
     )
   )
 )
+
 # 원자재 별 상관있는 종목 갯수
-View(data.frame("count"=apply(resource_item_positive_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
+View(data.frame("count"=apply(resource_end_price_positive_cor, 1, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
 # 종목 별 상관있는 원자재 갯수
-View(data.frame("count"=apply(resource_item_positive_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
-# 양의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차
-View(as.data.frame(rowMeans(resource_item_positive_cor, na.rm = TRUE)))
-View(as.data.frame(apply(resource_item_positive_cor,1,function(x){sd(x,na.rm = TRUE)})))
+View(data.frame("count"=apply(resource_end_price_positive_cor, 2, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
+
+# # 양의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차 - NA값으로 대체 필요
+# View(as.data.frame(rowMeans(resource_end_price_positive_cor, na.rm = TRUE)))
+# View(as.data.frame(apply(resource_end_price_positive_cor,1,function(x){sd(x,na.rm = TRUE)})))
+
 
 ### 음의 상관관계를 가지는 원자재 - 종목 매트릭스
-resource_item_negative_cor <- matrix(nrow = 80, ncol = 120)
-rownames(resource_item_negative_cor) <- rownames(resource_end_price_cor)
-colnames(resource_item_negative_cor) <- colnames(resource_end_price_cor)
+resource_end_price_negative_cor <- matrix(nrow = 41, ncol = 120)
+rownames(resource_end_price_negative_cor) <- rownames(resource_end_price_cor)
+colnames(resource_end_price_negative_cor) <- colnames(resource_end_price_cor)
 for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
   for(j in 1:length(resource_end_price_P))(
     if (resource_end_price_P[i,j]>0.05|resource_end_price_cor[i,j]>(-0.7))(
-      resource_item_negative_cor[i,j] <- NA
+      resource_end_price_negative_cor[i,j] <- 0
     ) else (
-      resource_item_negative_cor[i,j] <- resource_end_price_cor[i,j]
+      resource_end_price_negative_cor[i,j] <- resource_end_price_cor[i,j]
     )
   )
 )
 # 원자재 별 상관있는 종목 갯수
-View(data.frame("count"=apply(resource_item_negative_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
+View(data.frame("count"=apply(resource_end_price_negative_cor, 1, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
 # 종목 별 상관있는 원자재 갯수
-View(data.frame("count"=apply(resource_item_negative_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
-# 음의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차
-View(as.data.frame(rowMeans(resource_item_negative_cor, na.rm = TRUE)))
-View(as.data.frame(apply(resource_item_negative_cor,1,function(x){sd(x,na.rm = TRUE)})))
+View(data.frame("count"=apply(resource_end_price_negative_cor, 2, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
 
-resource_item_count$summary <- apply(resource_end_price_cor,1,function(x){summary(x)})
-apply(resource_end_price_cor,1,function(x){summary(x)})
+# # 음의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차 - NA값으로 대체 필요
+# View(as.data.frame(rowMeans(resource_end_price_negative_cor, na.rm = TRUE)))
+# View(as.data.frame(apply(resource_end_price_negative_cor,1,function(x){sd(x,na.rm = TRUE)})))
 
-apply(resource_end_price_cor,2,function(x){head(order(x))})
 
-apply(resource_end_price_cor,2,function(x){head(order(x,decreasing = FALSE,na.last = TRUE))})
+########### k-means clustering ##############
 
-View(resource_item_count)
-View(resource_end_price_cor)
+# calculate sum of square function
+wssplot <- function(data, nc=20, seed = 1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+}
 
-ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+### 전체 매트릭스
+
+wssplot(t(resource_end_price_cor))
+fit.km_20 <- kmeans(t(resource_end_price_cor), 20, nstart = 25)
+fit.km_20$tot.withinss
+View(fit.km_20$centers)
+
+# 각 군집별 변수의 요약값 (mean)
+aggregate(t(resource_end_price_cor), by=list(cluster=fit.km_20$cluster), mean)
+ # write.csv(aggregate(t(resource_end_price_cor), by=list(cluster=fit.km_20$cluster), mean), file = "cluster_col_mean.csv")
+
+# 각 군집에 포함되는 종목 csv파일
+sort(fit.km_20$cluster)
+ # write.csv(sort(fit.km_20$cluster),file = "cluster.csv")
+
+
+### 양의 상관관계
+wssplot(t(resource_end_price_positive_cor))
+fit.km_20_positive <- kmeans(t(resource_end_price_positive_cor), 20, nstart = 25)
+fit.km_20_positive$tot.withinss
+fit.km_20_positive$cluster
+
+# cut off value를 정하기 위해 양의 상관관계 매트릭스의 평균계산 (0은 제외하고)
+# r 0.7이상, p 0.05미만 갯수 - 638개
+sum(data.frame("count"=apply(t(resource_end_price_positive_cor), 2, function(x){result <<- sum(abs(x)>0)})))
+# r 값들의 합 - 508.9149
+sum(t(resource_end_price_positive_cor))
+ # 즉, 0값을 제외한 r값들의 평균은 508.9149 / 638 = 0.7976723
+# 각 군집별 변수의 요약값 (mean)
+View(aggregate(t(resource_end_price_positive_cor), by=list(cluster=fit.km_20_positive$cluster), mean))
+
+View(data.frame(sort(fit.km_20_positive$cluster)))
+### 음의 상관관계
+wssplot(t(resource_end_price_negative_cor))
+fit.km_19_negative <- kmeans(t(resource_end_price_negative_cor), 19, nstart = 25)
+fit.km_19_negative$tot.withinss
+
+# cut off value를 정하기 위해 양의 상관관계 매트릭스의 평균계산 (0은 제외하고)
+# r 0.7이상, p 0.05미만 갯수 - 198개
+sum(data.frame("count"=apply(t(resource_end_price_negative_cor), 2, function(x){result <<- sum(abs(x)>0)})))
+# r 값들의 합 - (-157.4238)
+sum(t(resource_end_price_negative_cor))
+# 즉, 0값을 제외한 r값들의 평균은 -157.4238 / 198 = -0.7950697
+# 각 군집별 변수의 요약값 (mean)
+View(aggregate(t(resource_end_price_negative_cor), by=list(cluster=fit.km_19_negative$cluster), mean))
+
+
+# resource_item_count$summary <- apply(resource_end_price_cor,1,function(x){summary(x)})
+# apply(resource_end_price_cor,1,function(x){summary(x)})
+# apply(resource_end_price_cor,2,function(x){head(order(x))})
+# apply(resource_end_price_cor,2,function(x){head(order(x,decreasing = FALSE,na.last = TRUE))})
+# 
+# View(resource_item_count)
+# View(resource_end_price_cor)
+# 
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
