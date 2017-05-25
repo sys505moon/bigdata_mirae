@@ -1,4 +1,4 @@
- # Need packages
+# Need packages
 # install.packages("xlsx")
 # install.packages("data.table")
 # install.packages("ggplot2")
@@ -14,13 +14,15 @@ library(Hmisc) # rcorr() 쓰기 위함
 getwd()
 setwd("/home/moon/R/bigdata_mirae/Jongho_data")
 setwd("C:/Users/GooYoung/Documents/R/bigdata_mirae/gooyoung_data/")
- # 재수 경로 입력
+
+# 재수경로
+
 
 
 # read.xlsx 
-  # data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
-  # data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
-  # data[,1] <- as.numeric(data[,1])
+# data <- read.xlsx("빅데이터페스티벌DB_S&P종목_001.xlsm", sheetIndex = 3)
+# data[,1] <- paste(substr(data[,1], 3, 4), substr(data[,1],6,7), sep = '')
+# data[,1] <- as.numeric(data[,1])
 
 # fread
 end_price <- fread("end_price.csv", sep = ',')
@@ -38,9 +40,9 @@ market_capital <- fread("market_capital.csv", sep = ',')
 dividend_tendency <- fread("dividend_tendency.csv", sep = ',')
 dividend_rate <- fread("dividend_rate.csv", sep = ',')
 
-  # data_table$time <- substr(data_table$time, 3, 7)data_table$time <- substr(data_table$time, 3, 7)
-  # colnames(data_table)[1] <- 'time'
-  # colnames(data_table)[2] <- 'apple'
+# data_table$time <- substr(data_table$time, 3, 7)data_table$time <- substr(data_table$time, 3, 7)
+# colnames(data_table)[1] <- 'time'
+# colnames(data_table)[2] <- 'apple'
 
 # colname change
 
@@ -75,8 +77,8 @@ dividend_tendency <- data.frame(dividend_tendency)
 dividend_rate <- data.frame(dividend_rate)
 
 # group(item) data_integration  
-  # ex)x_AAPL 등 종목별로 각 지표(종가, 거래량 등)를 묶음
-  # *주의* 데이터들을 data.table 에서 data.frame 으로 변형해야 함
+# ex)x_AAPL 등 종목별로 각 지표(종가, 거래량 등)를 묶음
+# *주의* 데이터들을 data.table 에서 data.frame 으로 변형해야 함
 
 item_names <- fread("item names.csv", sep =',', header = T)
 item_names <- t(item_names)
@@ -99,7 +101,7 @@ for (i in 1:length(item_strsplit$X1)){
                                                           by = 'time', all = TRUE ))
 }
 
- # make data-mart's(item group data) colnames to simple (delete unnecessary words)
+# make data-mart's(item group data) colnames to simple (delete unnecessary words)
 
 for (i in 1:length(variable_box)){
   frame <- get(variable_box[i])
@@ -107,7 +109,7 @@ for (i in 1:length(variable_box)){
   assign(variable_box[i], frame)
 }
 
- # group(item) correlation search
+# group(item) correlation search
 
 x_AAPL_cor <- rcorr(as.matrix(x_AAPL[2:14]), type = "pearson")$r
 write.csv(x_AAPL_cor, "x_AAPL_cor.csv", row.names = TRUE, fileEncoding = "EUC-KR")
@@ -122,7 +124,7 @@ cal_income <- function(){
   for (i in 2:length(end_price$time)){
     for (j in 2:length(end_price)){
       income[i-1,j] <- (end_price[i,j]-end_price[i-1,j])/end_price[i-1,j]
-      }
+    }
   }
   return(income)
 }
@@ -136,51 +138,51 @@ colnames(income_rate)[122] <- "best_income_rate"
 colnames(income_rate)[123] <- "which.max"
 write.csv(income_rate, "income_rate.csv", fileEncoding = "EUC-KR", row.names = FALSE)
 
- # ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
+# ggplot(income_AAPL, aes(x=end_price.time, y=income, group=1))+geom_point()
 
 
- # Calculate best income-rate each month in data
+# Calculate best income-rate each month in data
 
-    #(1) 리스트로 반환값 (차후 계산시 편리할 것)
-    TopRankItems <- list()
-    TopRankValues <- list()
-    SearchTopRank <- function(x, n){
-      for (i in 1:nrow(x)){
-        TopRankItems[i] <- 0
-        TopRankValues[i] <- 0
-        for (j in 1:n){
-          which <- which.max(x[i,2:121])
-          TopRankItems[[i]][j] <- x[i,2:121][which]
-          TopRankValues[[i]][j] <- colnames(x[,2:121])[which]
-          x[i,2:121][which] <- NA
-        }
-      }
-      basket <- list(TopRankItems, TopRankValues)
-      return(basket)
+#(1) 리스트로 반환값 (차후 계산시 편리할 것)
+TopRankItems <- list()
+TopRankValues <- list()
+SearchTopRank <- function(x, n){
+  for (i in 1:nrow(x)){
+    TopRankItems[i] <- 0
+    TopRankValues[i] <- 0
+    for (j in 1:n){
+      which <- which.max(x[i,2:121])
+      TopRankItems[[i]][j] <- x[i,2:121][which]
+      TopRankValues[[i]][j] <- colnames(x[,2:121])[which]
+      x[i,2:121][which] <- NA
     }
-    
-    
-    #(2) data.frame 반환값 (이해하기 편함)
-    TopRankItems <- list()
-    SearchTopRank <- function(x, n){
-      for (i in 1:nrow(x)){
-        TopRankItems[i] <- 0
-        for (j in 1:n){
-          which <- which.max(x[i,2:121])
-          TopRankItems[[i]][j] <- colnames(x[,2:121])[which] 
-          TopRankItems[[i]][j+5] <- x[i,2:121][which]
-          x[i,2:121][which] <- NA
-        }
-      }
-      return(TopRankItems)
+  }
+  basket <- list(TopRankItems, TopRankValues)
+  return(basket)
+}
+
+
+#(2) data.frame 반환값 (이해하기 편함)
+TopRankItems <- list()
+SearchTopRank <- function(x, n){
+  for (i in 1:nrow(x)){
+    TopRankItems[i] <- 0
+    for (j in 1:n){
+      which <- which.max(x[i,2:121])
+      TopRankItems[[i]][j] <- colnames(x[,2:121])[which] 
+      TopRankItems[[i]][j+5] <- x[i,2:121][which]
+      x[i,2:121][which] <- NA
     }
-    BestIncomeRate <- SearchTopRank(income_rate, 5)
-    BestIncomeRate <- data.frame(matrix(unlist(BestIncomeRate), nrow = 5))
-    rownames(BestIncomeRate) <- c("1위", "2위", "3위", "4위", "5위")
-    colnames(BestIncomeRate) <- rep(income_rate[,1], each = 2) 
-                                              # rep(c(1,2), 2)의 결과는 1,2,1,2 이고
-                                              # rep(c(1,2), each =2)의 결과는 1,1,2,2 이다.
-    write.csv(BestIncomeRate, "BestIncomeRate.csv", fileEncoding = "EUC-KR", row.names = TRUE)
+  }
+  return(TopRankItems)
+}
+BestIncomeRate <- SearchTopRank(income_rate, 5)
+BestIncomeRate <- data.frame(matrix(unlist(BestIncomeRate), nrow = 5))
+rownames(BestIncomeRate) <- c("1위", "2위", "3위", "4위", "5위")
+colnames(BestIncomeRate) <- rep(income_rate[,1], each = 2) 
+# rep(c(1,2), 2)의 결과는 1,2,1,2 이고
+# rep(c(1,2), each =2)의 결과는 1,1,2,2 이다.
+write.csv(BestIncomeRate, "BestIncomeRate.csv", fileEncoding = "EUC-KR", row.names = TRUE)
 
 
 
@@ -245,32 +247,153 @@ resource$time <- gsub("-","/",resource$time)
 resource <- as.data.frame(resource)
 
 resource_end_price <- merge(x=resource,y=end_price,by="time",all=TRUE)
-View(resource_end_price)
+# View(resource_end_price)
 
-ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
-
-# rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
-resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[1:80,])
-resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[1:80,])
+## rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
+resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[c(1:39,79,80),])
+resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[c(1:39,79,80),])
 resource_end_price_cor <- resource_end_price_cor[,-c(1:80)]
 resource_end_price_P <- resource_end_price_P[,-c(1:80)]
 
-# cut off p-value > 0.05 or abs(correlation) < 0.7
+## cut off p-value > 0.05 or abs(correlation) < 0.7
 for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
   for(j in 1:length(resource_end_price_P))(
     if (resource_end_price_P[i,j]>0.05|abs(resource_end_price_cor[i,j])<0.7)(
-      resource_end_price_cor[i,j] <- NA
+      resource_end_price_cor[i,j] <- 0
     )
   )
 )
-View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(x >= 0, na.rm = TRUE)})))
-View(as.data.frame(apply(resource_end_price_cor, 1, function(x){ result <<- sum(abs(x) >= 0, na.rm = TRUE)})))
 
-View(resource_end_price_cor)
+# 원자재 별 상관있는 종목 갯수
+View(data.frame("count"=apply(resource_end_price_cor, 1, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
+# 종목 별 상관있는 원자재 갯수
+View(data.frame("count"=apply(resource_end_price_cor, 2, function(x){result <<- sum(abs(x)>=0,na.rm=TRUE)})))
 
+
+# 원자재 별 종목 상관계수의 평균, 표준편차
+# -> 그런데 필요없을듯 ㅇㅇ 왜냐하면 양의 상관계수, 음의 상관계수 섞여있으니까
+# -> 그럼 양의 상관계수만 따로, 음의 상관계수만 따로 해보면 ?
+rowMeans(resource_end_price_cor, na.rm = TRUE)
+apply(resource_end_price_cor,1,function(x){sd(x,na.rm = TRUE)})
+
+
+### 양의 상관관계를 가지는 원자재 - 종목 매트릭스
+resource_end_price_positive_cor <- matrix(nrow = 41, ncol = 120)
+rownames(resource_end_price_positive_cor) <- rownames(resource_end_price_cor)
+colnames(resource_end_price_positive_cor) <- colnames(resource_end_price_cor)
+for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
+  for(j in 1:length(resource_end_price_P))(
+    if (resource_end_price_P[i,j]>0.05|resource_end_price_cor[i,j]<0.7)(
+      resource_end_price_positive_cor[i,j] <- 0
+    ) else (
+      resource_end_price_positive_cor[i,j] <- resource_end_price_cor[i,j]
+    )
+  )
+)
+
+# 원자재 별 상관있는 종목 갯수
+View(data.frame("count"=apply(resource_end_price_positive_cor, 1, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
+# 종목 별 상관있는 원자재 갯수
+View(data.frame("count"=apply(resource_end_price_positive_cor, 2, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
+
+# # 양의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차 - NA값으로 대체 필요
+# View(as.data.frame(rowMeans(resource_end_price_positive_cor, na.rm = TRUE)))
+# View(as.data.frame(apply(resource_end_price_positive_cor,1,function(x){sd(x,na.rm = TRUE)})))
+
+
+### 음의 상관관계를 가지는 원자재 - 종목 매트릭스
+resource_end_price_negative_cor <- matrix(nrow = 41, ncol = 120)
+rownames(resource_end_price_negative_cor) <- rownames(resource_end_price_cor)
+colnames(resource_end_price_negative_cor) <- colnames(resource_end_price_cor)
+for(i in 1:length(resource_end_price_P$AAPL.UW.Equity))(
+  for(j in 1:length(resource_end_price_P))(
+    if (resource_end_price_P[i,j]>0.05|resource_end_price_cor[i,j]>(-0.7))(
+      resource_end_price_negative_cor[i,j] <- 0
+    ) else (
+      resource_end_price_negative_cor[i,j] <- resource_end_price_cor[i,j]
+    )
+  )
+)
+# 원자재 별 상관있는 종목 갯수
+View(data.frame("count"=apply(resource_end_price_negative_cor, 1, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
+# 종목 별 상관있는 원자재 갯수
+View(data.frame("count"=apply(resource_end_price_negative_cor, 2, function(x){result <<- sum(abs(x)>0,na.rm=TRUE)})))
+
+# # 음의 상관관계를 가지는 원자재 별 종목 상관계수들의 평균과 표준편차 - NA값으로 대체 필요
+# View(as.data.frame(rowMeans(resource_end_price_negative_cor, na.rm = TRUE)))
+# View(as.data.frame(apply(resource_end_price_negative_cor,1,function(x){sd(x,na.rm = TRUE)})))
+
+
+########### k-means clustering ##############
+
+# calculate sum of square function
+wssplot <- function(data, nc=20, seed = 1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+}
+
+### 전체 매트릭스
+
+wssplot(t(resource_end_price_cor))
+fit.km_20 <- kmeans(t(resource_end_price_cor), 20, nstart = 25)
+fit.km_20$tot.withinss
+View(fit.km_20$centers)
+
+# 각 군집별 변수의 요약값 (mean)
+aggregate(t(resource_end_price_cor), by=list(cluster=fit.km_20$cluster), mean)
+ # write.csv(aggregate(t(resource_end_price_cor), by=list(cluster=fit.km_20$cluster), mean), file = "cluster_col_mean.csv")
+
+# 각 군집에 포함되는 종목 csv파일
+sort(fit.km_20$cluster)
+ # write.csv(sort(fit.km_20$cluster),file = "cluster.csv")
+
+
+### 양의 상관관계
+wssplot(t(resource_end_price_positive_cor))
+fit.km_20_positive <- kmeans(t(resource_end_price_positive_cor), 20, nstart = 25)
+fit.km_20_positive$tot.withinss
+fit.km_20_positive$cluster
+
+# cut off value를 정하기 위해 양의 상관관계 매트릭스의 평균계산 (0은 제외하고)
+# r 0.7이상, p 0.05미만 갯수 - 638개
+sum(data.frame("count"=apply(t(resource_end_price_positive_cor), 2, function(x){result <<- sum(abs(x)>0)})))
+# r 값들의 합 - 508.9149
+sum(t(resource_end_price_positive_cor))
+ # 즉, 0값을 제외한 r값들의 평균은 508.9149 / 638 = 0.7976723
+# 각 군집별 변수의 요약값 (mean)
+View(aggregate(t(resource_end_price_positive_cor), by=list(cluster=fit.km_20_positive$cluster), mean))
+
+View(data.frame(sort(fit.km_20_positive$cluster)))
+### 음의 상관관계
+wssplot(t(resource_end_price_negative_cor))
+fit.km_19_negative <- kmeans(t(resource_end_price_negative_cor), 19, nstart = 25)
+fit.km_19_negative$tot.withinss
+
+# cut off value를 정하기 위해 양의 상관관계 매트릭스의 평균계산 (0은 제외하고)
+# r 0.7이상, p 0.05미만 갯수 - 198개
+sum(data.frame("count"=apply(t(resource_end_price_negative_cor), 2, function(x){result <<- sum(abs(x)>0)})))
+# r 값들의 합 - (-157.4238)
+sum(t(resource_end_price_negative_cor))
+# 즉, 0값을 제외한 r값들의 평균은 -157.4238 / 198 = -0.7950697
+# 각 군집별 변수의 요약값 (mean)
+View(aggregate(t(resource_end_price_negative_cor), by=list(cluster=fit.km_19_negative$cluster), mean))
+
+
+# resource_item_count$summary <- apply(resource_end_price_cor,1,function(x){summary(x)})
+# apply(resource_end_price_cor,1,function(x){summary(x)})
+# apply(resource_end_price_cor,2,function(x){head(order(x))})
+# apply(resource_end_price_cor,2,function(x){head(order(x,decreasing = FALSE,na.last = TRUE))})
+# 
+# View(resource_item_count)
+# View(resource_end_price_cor)
+# 
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,2]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,3]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,4]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,5]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,6]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,7]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
+# ggplot(data = resource, aes(x=resource[,1], y=resource[,8]))+geom_point()+theme(axis.text.x = element_text(angle = 45, size = 5))
