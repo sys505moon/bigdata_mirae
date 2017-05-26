@@ -357,7 +357,7 @@ fit.km_20_positive$cluster
 
 # cut off value를 정하기 위해 양의 상관관계 매트릭스의 평균계산 (0은 제외하고)
 # r 0.7이상, p 0.05미만 갯수 - 638개
-sum(data.frame("count"=ap(t(resource_end_price_positive_cor), 2, function(x){result <<- sum(abs(x)>0)})))
+sum(data.frame("count"=apply(t(resource_end_price_positive_cor), 2, function(x){result <<- sum(abs(x)>0)})))
 # r 값들의 합 - 508.9149
 sum(t(resource_end_price_positive_cor))
  # 즉, 0값을 제외한 r값들의 평균은 508.9149 / 638 = 0.7976723
