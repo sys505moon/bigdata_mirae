@@ -3,12 +3,18 @@
 # install.packages("data.table")
 # install.packages("ggplot2")
 # install.packages("Hmisc")
+# install.packages('dplyr')
+# install.packages('dtplyr')
+# install.packages('rnn')
 
 # Library
 library(xlsx)
 library(data.table)
 library(ggplot2)
 library(Hmisc) # rcorr() 쓰기 위함
+library(dplyr)
+library(dtplyr)
+library(rnn)
 
 # directory setting
 getwd()
@@ -86,6 +92,8 @@ item_names <- item_names[-1,]
 colnames(item_names) <- c("English", "Korean")
 item_names <- as.data.frame(item_names)
 item_strsplit <- data.frame(do.call('rbind', strsplit(as.character(item_names$English), split = ' ', fixed = TRUE)))
+item_names <- cbind(item_names, as.data.frame(sector$`GICS 섹터`))
+colnames(item_names)[3] <- "sector"
 
 variable_box = c()
 for (i in 1:length(item_strsplit$X1)){
@@ -110,6 +118,29 @@ for (i in 1:length(variable_box)){
 }
 
 # group(item) correlation search
+
+  # All items correlation mean data by variable( ex) high, low, volume)
+for(i in 1:length(item_strsplit$X1)){
+  assign(paste("x", item_strsplit$X1[i], "cor", sep = "_"), rcorr(as.matrix(get(paste("x", item_strsplit$X1[i], sep = "_"))[2:14]), type = "pearson")$r)
+}
+All_Variable_Corr_mean = matrix(nrow = nrow(x_AAPL_cor), byrow = TRUE)
+colnames(All_Variable_Corr_mean) <-  "end_price"
+rownames(All_Variable_Corr_mean) <- rownames(x_AAPL_cor)
+contempo = c()
+for(m in 1:nrow(x_AAPL_cor)){
+  for(i in 1:length(item_strsplit$X1)){
+    contempo = c(contempo, get(paste("x", item_strsplit$X1[i], "cor", sep = "_"))[m,1])
+  }
+  All_Variable_Corr_mean[m,1] = mean(contempo, na.rm = TRUE)
+}
+rm(contempo)
+
+  # bundle of correlations data by items
+cor_by_items <- as.data.frame(x_AAPL_cor)[1]
+for(k in 1:(length(item_strsplit$X1)-1)){
+  cor_by_items = cbind(cor_by_items, as.data.frame(get(paste("x", item_strsplit$X1[k+1], "cor", sep = "_")))[1])
+}
+colnames(cor_by_items) <- item_strsplit$X1
 
 x_AAPL_cor <- rcorr(as.matrix(x_AAPL[2:14]), type = "pearson")$r
 write.csv(x_AAPL_cor, "x_AAPL_cor.csv", row.names = TRUE, fileEncoding = "EUC-KR")
@@ -143,53 +174,107 @@ write.csv(income_rate, "income_rate.csv", fileEncoding = "EUC-KR", row.names = F
 
 # Calculate best income-rate each month in data
 
-#(1) 리스트로 반환값 (차후 계산시 편리할 것)
-TopRankItems <- list()
-TopRankValues <- list()
-SearchTopRank <- function(x, n){
-  for (i in 1:nrow(x)){
-    TopRankItems[i] <- 0
-    TopRankValues[i] <- 0
-    for (j in 1:n){
-      which <- which.max(x[i,2:121])
-      TopRankItems[[i]][j] <- x[i,2:121][which]
-      TopRankValues[[i]][j] <- colnames(x[,2:121])[which]
-      x[i,2:121][which] <- NA
-    }
-  }
-  basket <- list(TopRankItems, TopRankValues)
-  return(basket)
+# #(1) 리스트로 반환값 (차후 계산시 편리할 것)
+# TopRankItems <- list()
+# TopRankValues <- list()
+# SearchTopRank <- function(x, n){
+#   for (i in 1:nrow(x)){
+#     TopRankItems[i] <- 0
+#     TopRankValues[i] <- 0
+#     for (j in 1:n){
+#       which <- which.max(x[i,2:121])
+#       TopRankItems[[i]][j] <- x[i,2:121][which]
+#       TopRankValues[[i]][j] <- colnames(x[,2:121])[which]
+#       x[i,2:121][which] <- NA
+#     }
+#   }
+#   basket <- list(TopRankItems, TopRankValues)
+#   return(basket)
+# }
+# 
+# 
+# #(2) data.frame 반환값 (이해하기 편함)
+# TopRankItems <- list()
+# SearchTopRank <- function(x, n){
+#   for (i in 1:nrow(x)){
+#     TopRankItems[i] <- 0
+#     for (j in 1:n){
+#       which <- which.max(x[i,2:121])
+#       TopRankItems[[i]][j] <- colnames(x[,2:121])[which] 
+#       TopRankItems[[i]][j+5] <- x[i,2:121][which]
+#       x[i,2:121][which] <- NA
+#     }
+#   }
+#   return(TopRankItems)
+# }
+# BestIncomeRate <- SearchTopRank(income_rate, 5)
+# BestIncomeRate <- data.frame(matrix(unlist(BestIncomeRate), nrow = 5))
+# rownames(BestIncomeRate) <- c("1위", "2위", "3위", "4위", "5위")
+# colnames(BestIncomeRate) <- rep(income_rate[,1], each = 2) 
+# # rep(c(1,2), 2)의 결과는 1,2,1,2 이고
+# # rep(c(1,2), each =2)의 결과는 1,1,2,2 이다.
+# write.csv(BestIncomeRate, "BestIncomeRate.csv", fileEncoding = "EUC-KR", row.names = TRUE)
+
+# Make RNN model 
+normalize <- function(x){
+  return((x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE)))
 }
 
+  
+  # item bundle using sector data
+IT_index <- which(item_names$sector == "Information Technology")
+Finan_index <- which(item_names$sector == "Financials")
+CD_index <- which(item_names$sector == "Consumer Discretionary")
+Health_index <- which(item_names$sector == "Health Care")
+Energy_index <- which(item_names$sector == "Energy")
+Indust_index <- which(item_names$sector == "Industrials")
+Telecom_index <- which(item_names$sector == "Telecommunication Services")
+CS_index <- which(item_names$sector == "Consumer Staples")
+Material_index <- which(item_names$sector == "Materials")
+Utility_index <- which(item_names$sector == "Utilities")
+Estate_index <- which(item_names$sector == "Real Estate")
 
-#(2) data.frame 반환값 (이해하기 편함)
-TopRankItems <- list()
-SearchTopRank <- function(x, n){
-  for (i in 1:nrow(x)){
-    TopRankItems[i] <- 0
-    for (j in 1:n){
-      which <- which.max(x[i,2:121])
-      TopRankItems[[i]][j] <- colnames(x[,2:121])[which] 
-      TopRankItems[[i]][j+5] <- x[i,2:121][which]
-      x[i,2:121][which] <- NA
+end_price_normalize <- as.data.frame(lapply(end_price[2:204, 2:121], normalize))
+high_price_normalize <- as.data.frame(lapply(high_price[1:203, 2:121], normalize))
+low_price_normalize <- as.data.frame(lapply(low_price[1:203, 2:121], normalize))
+volume_normalize <- as.data.frame(lapply(volume[1:203, 2:121], normalize))
+market_capital_normalize <- as.data.frame(lapply(market_capital[1:203, 2:121], normalize))
+dividend_tendency_normalize <- as.data.frame(lapply(dividend_tendency[1:203, 2:121], normalize))
+for(i in 1:nrow(dividend_tendency_normalize)){
+  for(j in 1:ncol(dividend_tendency_normalize)){
+    if(is.nan(dividend_tendency_normalize[i,j])){
+      dividend_tendency_normalize[i,j] = NA
     }
   }
-  return(TopRankItems)
 }
-BestIncomeRate <- SearchTopRank(income_rate, 5)
-BestIncomeRate <- data.frame(matrix(unlist(BestIncomeRate), nrow = 5))
-rownames(BestIncomeRate) <- c("1위", "2위", "3위", "4위", "5위")
-colnames(BestIncomeRate) <- rep(income_rate[,1], each = 2) 
-# rep(c(1,2), 2)의 결과는 1,2,1,2 이고
-# rep(c(1,2), each =2)의 결과는 1,1,2,2 이다.
-write.csv(BestIncomeRate, "BestIncomeRate.csv", fileEncoding = "EUC-KR", row.names = TRUE)
+dividend_rate_normalize <- as.data.frame(lapply(dividend_rate[1:203, 2:121], normalize))
 
+ # sector : Information Technology
 
+IT_end_price <- t(end_price_normalize[IT_index]) # y
 
+IT_high_price <- t(high_price_normalize[IT_index]) # x1
+IT_low_price <- t(low_price_normalize[IT_index]) # x2
+IT_volume <- t(volume_normalize[IT_index]) # x3
+IT_market_capital <- t(market_capital_normalize[IT_index]) # x4
+IT_dividend_tendency <- t(dividend_tendency_normalize[IT_index]) # x5
+IT_dividend_rate <- t(dividend_rate_normalize[IT_index]) # x6
 
+IT_x <- array(c(IT_high_price, IT_low_price, IT_volume, IT_market_capital, IT_dividend_tendency, IT_dividend_rate), dim = c(dim(IT_high_price), 6))
+IT_y <- array(IT_end_price, dim = dim(IT_end_price))
 
+all <- 1:ncol(IT_end_price)
+train <- 1:round(ncol(IT_end_price)*0.7)
+test <- seq(round(ncol(IT_end_price)*0.7)+1, ncol(IT_end_price))
 
-
+IT_model <- trainr_JH(Y = IT_y[,, drop = F],
+                      X = IT_x[,,, drop = F],
+                      learningrate = 0.035,
+                      hidden_dim = 14,
+                      batch_size = 20,
+                      numepochs = 100)
+install.packages('sigmoid')
+library(sigmoid)
 # data_View
   # 
   # 
