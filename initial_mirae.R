@@ -356,13 +356,54 @@ fit.km_21$tot.withinss
 fit.km_21$cluster
 
 # 각 군집별 변수의 요약값 (mean)
+Mean_cor_of_cluster <- aggregate(t(resource_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean)
 View(aggregate(t(resource_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean))
- write.csv(aggregate(t(resource_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean), file = "cluster_mean.csv")
+ write.csv(Mean_cor_of_cluster, file = "cluster_mean.csv")
 
 
 # 각 군집에 포함되는 종목 csv파일
 sort(fit.km_21$cluster)
 write.csv(sort(fit.km_21$cluster), file = "cluster.csv")
+
+# cut-off 1. 0을 포함한 셀 별 평균 상관계수
+# 군집별 원자재 상관계수의 셀 수 = 41*21 = 861 개
+# 군집별 원자재 상관계수의 총 합 = sum(r) =  178.3096
+# 각 셀별 평균 상관계수 = 178.3096 / 861 = 0.2070959
+
+# cut-off 2. 0을 포함하지 않은 셀 별 평균 상관계수
+# 군집별 0 보다 큰 원자재 상관계수 갯수(r>0) = 286 개
+# sum(data.frame("count"=apply(t(Mean_cor_of_cluster), 2, function(x){result <<- sum(abs(x)>0)})))
+# 군집별 원자재 상관계수의 총 합 = sum(r) =  178.3096
+# 각 셀별 평균 상관계수 = 178.3096 / 286 = 0.6234601
+
+
+# 군집별로 고려해야 할 원자재는 ?
+
+# 기준) cut-off 1.
+what_resource_to_cluster_1 <- list()
+for (i in 1:21){
+  what_resource_to_cluster_1[[i]] <- i
+  for (j in 2:length(Mean_cor_of_cluster)){
+    if(Mean_cor_of_cluster[i,j]>0.2070959){
+      what_resource_to_cluster_1[[i]] <- append(c(what_resource_to_cluster_1[[i]]), 
+                                                c(names(Mean_cor_of_cluster[j])))
+    }  
+  }
+}
+what_resource_to_cluster_1
+
+# 기준) cut-off 2.
+what_resource_to_cluster_2 <- list()
+for (i in 1:21){
+  what_resource_to_cluster_2[[i]] <- i
+  for (j in 2:length(Mean_cor_of_cluster)){
+    if(Mean_cor_of_cluster[i,j]>0.6234601){
+      what_resource_to_cluster_2[[i]] <- append(c(what_resource_to_cluster_2[[i]]), 
+                                                c(names(Mean_cor_of_cluster[j])))
+    }  
+  }
+}
+what_resource_to_cluster_2
 
 
 # ### 전체 매트릭스
