@@ -86,7 +86,8 @@ dividend_rate <- data.frame(dividend_rate)
 # ex)x_AAPL 등 종목별로 각 지표(종가, 거래량 등)를 묶음
 # *주의* 데이터들을 data.table 에서 data.frame 으로 변형해야 함
 
-item_names <- fread("item_names.txt", sep =',', header = T)
+# item_names <- fread("item_names.txt", sep =',', header = T)
+item_names <- fread("item names.csv", sep =',', header = T)
 item_names <- t(item_names)
 item_names <- item_names[-1,]
 colnames(item_names) <- c("English", "Korean")
@@ -263,6 +264,7 @@ IT_dividend_rate <- t(dividend_rate_normalize[IT_index]) # x6
 IT_x <- array(c(IT_high_price, IT_low_price, IT_volume, IT_market_capital, IT_dividend_tendency, IT_dividend_rate), dim = c(dim(IT_high_price), 6))
 IT_y <- array(IT_end_price, dim = dim(IT_end_price))
 
+
 all <- 1:ncol(IT_end_price)
 train <- 1:round(ncol(IT_end_price)*0.7)
 test <- seq(round(ncol(IT_end_price)*0.7)+1, ncol(IT_end_price))
@@ -271,10 +273,77 @@ IT_model <- trainr_JH(Y = IT_y[,, drop = F],
                       X = IT_x[,,, drop = F],
                       learningrate = 0.035,
                       hidden_dim = 14,
-                      batch_size = 20,
+                      batch_size = 1,
                       numepochs = 100)
-install.packages('sigmoid')
-library(sigmoid)
+
+
+ # RNN model_2
+sector_name = as.character(unique(item_names$sector))
+short_sector_name = c("IT", "Finan", "CD", "Health", "Energy", "Indust", "Telecom", "CS", "Material", "Utility", "Estate")
+
+# item_strsplit$X1[which(item_names$sector == sector_name[1])]
+# length(item_strsplit$X1[which(item_names$sector == sector_name[1])])
+# end_price_normalize[which(item_names$sector == sector_name[1])]
+
+
+for(i in 1:length(short_sector_name)){
+  assign(paste(short_sector_name[i], "sector", "length", sep = "_"), vector())
+  for(j in 1:length(item_strsplit$X1[which(item_names$sector == sector_name[i])])){
+    assign(paste(short_sector_name[i], "sector", "length", sep = "_"),
+           c(get(paste(short_sector_name[i], "sector", "length", sep = "_")),
+             nrow(end_price_normalize[which(item_names$sector == sector_name[i])][j])
+             -sum(is.na(end_price_normalize[which(item_names$sector == sector_name[i])][j]))))
+  }
+}
+  
+sub_x <- c("end_price_normalize", "high_price_normalize", "low_price_normalize", "volume_normalize",  "market_capital_normalize", "dividend_rate_normalize", "dividend_tendency_normalize")
+
+
+for(i in 1:length(short_sector_name)){
+  time = nrow(end_price_normalize)
+  mrm_index <- data.frame(length = apply(end_price_normalize[get(paste(short_sector_name[i], "index", sep = "_"))], 2 , function(x){nrow(end_price_normalize)-sum(is.na(x))}),
+                          name = item_strsplit$X1[get(paste(short_sector_name[i], "index", sep = "_"))])
+  rownames(mrm_index) <- 1:length(get(paste(short_sector_name[i], "index", sep = "_")))
+  for(j in 1:length(unique(mrm_index$length))){
+    # Making input data 
+    sort(unique(mrm_index$length), decreasing = T)[1]
+    # sub_x 변수 생성
+    sub_x_box = c()
+    for(k in 1:(length(sub_x))){
+      assign(paste("x", k, sep = "_"),
+             get(sub_x[k])[subset(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])$name])
+      if(k = 1){
+        assign("y", get(paste("x", k, sep = "_")))
+      }else{
+        sub_x_box <- c(sub_x_box, get(paste("x", k, sep = "_")))
+      }
+    }
+    # 원자재 변수 생성
+    for(l in 1:length(material)){
+      assign(paste("x", length(sub_x)+l, sep = "_"),
+             get(material[l])[subset(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])]) # 구영이 리스트 보고 수정
+      material_box <- c(mateial_box, get(paste("x", length(sub_x)+l, sep = "_")))
+    }
+    # 혹시모를 NA 처리 / dim = (sort(unique(mrm_index$length), decreasing = T)[j]) X 클러스터에 속한 sample 수
+    
+    x <- array(c(sub_x_box, meterial), dim = c(dim(x_1), length(sub_x_box)+length(material)))
+    y <- array(y, dim = dim(y))
+    
+    # Making RNN model
+  }
+}
+ 
+x = c(x1,x2,x3)
+
+
+
+
+
+
+# install.packages('sigmoid')
+# library(sigmoid)
+
+
 # data_View
   # 
   # 
