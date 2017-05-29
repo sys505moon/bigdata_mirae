@@ -483,6 +483,16 @@ All_RNN_predict_result <- bind_rows(IT_RNN_predict_result, Finan_RNN_predict_res
 write.csv(All_RNN_predict_result, "All_RNN_predict_result_iter3500.csv")
 
 
+  # denormalize (max/min data)
+end_max_min <- data.frame(max = apply(end_price[2:121], 2, max, na.rm = TRUE), min = apply(end_price[2:121], 2, min, na.rm = TRUE))
+high_max_min <- data.frame(max = apply(high_price[2:121], 2, max, na.rm = TRUE), min = apply(high_price[2:121], 2, min, na.rm = TRUE))
+low_max_min <- data.frame(max = apply(low_price[2:121], 2, max, na.rm = TRUE), min = apply(low_price[2:121], 2, min, na.rm = TRUE))
+volume_max_min <- data.frame(max = apply(volume[2:121], 2, max, na.rm = TRUE), min = apply(volume[2:121], 2, min, na.rm = TRUE))
+market_max_min <- data.frame(max = apply(market_capital[2:121], 2, max, na.rm = TRUE), min = apply(market_capital[2:121], 2, min, na.rm = TRUE))
+
+# denormalize <- function(x, row_data){
+#   return(x*(row_data[42])-min(x, na.rm = TRUE))+min(x, na.rm = TRUE)
+# }
 
 
 # install.packages('sigmoid')
