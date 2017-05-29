@@ -555,38 +555,39 @@ resource$time <- substr(resource$time,1,7)
 resource$time <- gsub("-","/",resource$time)
 resource <- as.data.frame(resource)
 
-### resource index 추가
-resource_code <- data.frame("resource_name" = colnames(resource[c(2:40,80,81)]),
+### resource index 추가, 안쓰는 resource 제거
+Material <- resource[c(1:40,80,81)]
+Material_code <- data.frame("Material_name" = colnames(Material[-1]),
                             "codeNum" = 1:41)
 
-resource_end_price <- merge(x=resource,y=end_price,by="time",all=TRUE)
+Material_end_price <- merge(x=Material,y=end_price,by="time",all=TRUE)
 # View(resource_end_price)
 
 ### rcorr(as.matrix(resource_item[,-c(1)]), type="pearson")$r
-resource_end_price_cor <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$r)[c(1:39,79,80),])
-resource_end_price_P <- data.frame((rcorr(as.matrix(resource_end_price[,-c(1)]), type="pearson")$P)[c(1:39,79,80),])
-resource_end_price_cor <- resource_end_price_cor[,-c(1:80)]
-resource_end_price_P <- resource_end_price_P[,-c(1:80)]
+Material_end_price_cor <- data.frame(rcorr(as.matrix(Material_end_price[-1]), type="pearson")$r)[1:41]
+Material_end_price_P <- data.frame(rcorr(as.matrix(Material_end_price[-1]), type="pearson")$P)[1:41]
+Material_end_price_cor <- as.data.frame(t(Material_end_price_cor[-c(1:41),]))
+Material_end_price_P <- as.data.frame(t(Material_end_price_P[-c(1:41),]))
 
 ### function cut off 1 : 원자재 - 종목 상관관계 절대값 매트릭스 (p, r)
-resource_end_price_abs_cor <- as.data.frame(matrix(nrow = 41, ncol = 120))
-rownames(resource_end_price_abs_cor) <- rownames(resource_end_price_cor)
-colnames(resource_end_price_abs_cor) <- item_strsplit$X1
+Material_end_price_abs_cor <- as.data.frame(matrix(nrow = 41, ncol = 120))
+rownames(Material_end_price_abs_cor) <- rownames(Material_end_price_cor)
+colnames(Material_end_price_abs_cor) <- item_strsplit$X1
 
 abs_cut_matrix <- function(p,r){
-  for(i in 1:length(resource_end_price_P$end_price_AAPL.UW.Equity))(
-    for(j in 1:length(resource_end_price_P))(
-      if (resource_end_price_P[i,j]>p|abs(resource_end_price_cor[i,j])<r)(
-        resource_end_price_abs_cor[i,j] <<- 0
+  for(i in 1:length(Material_end_price_P$end_price_AAPL.UW.Equity))(
+    for(j in 1:length(Material_end_price_P))(
+      if (Material_end_price_P[i,j]>p|abs(Material_end_price_cor[i,j])<r)(
+        Material_end_price_abs_cor[i,j] <<- 0
       ) else (
-        resource_end_price_abs_cor[i,j] <<- abs(resource_end_price_cor[i,j])
+        Material_end_price_abs_cor[i,j] <<- abs(Material_end_price_cor[i,j])
       )
     )
   )
 }
 # cut off value (p,r) 입력하여 절댓값 매트릭스 만들기
 abs_cut_matrix(0.05,0.7)
-
+# View(Material_end_price_abs_cor)
 ########### k-means clustering ##############
 
 # calculate sum of square function
@@ -600,71 +601,81 @@ wssplot <- function(data, nc=30, seed = 1234){
 
 ### 절대값 매트릭스
 
-wssplot(t(resource_end_price_abs_cor))
-fit.km_21 <- kmeans(t(resource_end_price_abs_cor), 21, nstart = 25)
-fit.km_21$tot.withinss
-fit.km_21$cluster
+wssplot(t(Material_end_price_abs_cor))
+set.seed(1234)
+fit.km <- kmeans(t(Material_end_price_abs_cor), 21, nstart = 25)
+fit.km$tot.withinss
+fit.km$cluster
 
 ### 각 군집별 변수의 요약값 (mean)
-Mean_cor_of_cluster <- aggregate(t(resource_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean)
-### View(aggregate(t(resource_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean))
+Mean_cor_of_cluster <- aggregate(t(Material_end_price_abs_cor), by=list(cluster=fit.km$cluster), mean)
+### View(aggregate(t(Material_end_price_abs_cor), by=list(cluster=fit.km_21$cluster), mean))
 write.csv(Mean_cor_of_cluster, file = "cluster_mean.csv")
 
 
 ### 각 군집에 포함되는 종목 csv파일
-sort(fit.km_21$cluster)
-write.csv(sort(fit.km_21$cluster), file = "cluster.csv")
-
-# cut-off 1. 0을 포함한 셀 별 평균 상관계수
-# 군집별 원자재 상관계수의 셀 수 = 41*21 = 861 개
-# 군집별 원자재 상관계수의 총 합 = sum(r) =  178.3096
-# 각 셀별 평균 상관계수 = 178.3096 / 861 = 0.2070959
-
-# cut-off 2. 0을 포함하지 않은 셀 별 평균 상관계수
-# 군집별 0 보다 큰 원자재 상관계수 갯수(r>0) = 286 개
-# sum(data.frame("count"=apply(t(Mean_cor_of_cluster), 2, function(x){result <<- sum(abs(x)>0)})))
-# 군집별 원자재 상관계수의 총 합 = sum(r) =  178.3096
-# 각 셀별 평균 상관계수 = 178.3096 / 286 = 0.6234601
-
+sort(fit.km$cluster)
+write.csv(sort(fit.km$cluster), file = "cluster.csv")
 
 ### 군집별로 고려해야 할 원자재는 ?
 
 ### cut-off 2
 
-what_resource_to_cluster <- as.data.frame(matrix(nrow = 21,ncol = 41))   # 행 갯수 = 군집 수 / 열 갯수 = 원자재 갯수
-rownames(what_resource_to_cluster) <- sort(unique(fit.km_21$cluster))
-colnames(what_resource_to_cluster) <- resource_code$resource_name
+what_Material_to_cluster <- as.data.frame(matrix(nrow = length(unique(fit.km$cluster)),ncol = 41))   # 행 갯수 = 군집 수 / 열 갯수 = 원자재 갯수
+rownames(what_Material_to_cluster) <- sort(unique(fit.km$cluster))
+colnames(what_Material_to_cluster) <- Material_code$Material_name
 
-resource_r_cut <- function(x){
+Material_r_cut <- function(x){
   for (i in 1:21){
     for (j in 2:length(Mean_cor_of_cluster)){
       if(Mean_cor_of_cluster[i,j]>x){
-        what_resource_to_cluster[i,j-1] <<- 1
+        what_Material_to_cluster[i,j-1] <<- 1
       } else {
-        what_resource_to_cluster[i,j-1] <<- 0
+        what_Material_to_cluster[i,j-1] <<- 0
       } 
     }
   }
 }
-### cut하고 싶은 value 입력 - 지금은 0이 아닌 셀들의 평균 입력함
-resource_r_cut(0.6234601)
-View(what_resource_to_cluster)
 
+# cut-off 2. 0을 포함하지 않은 셀 별 평균 상관계수
+# 군집별 0 보다 큰 원자재 상관계수 갯수(r>0) = 286 개
+# sum(data.frame("count"=apply(t(Mean_cor_of_cluster), 2, function(x){result <<- sum(abs(x)>0)})))
+# 군집별 원자재 상관계수의 총 합 = sum(r) =  177.8258
+# sum(Mean_cor_of_cluster[-1])
+# 각 셀별 평균 상관계수 = 177.8258 / 286 = 0.6217685
+
+### cut하고 싶은 value 입력 - 지금은 0이 아닌 셀들의 평균 입력함
+Material_r_cut(0.6217685)
+# View(what_Material_to_cluster)
+View(data.frame(apply(what_Material_to_cluster, 2, function(x){sum(x)})))
 ##### 군집별 종목 - 원자재 
 
 ### 1. 군집 index 추가
-item_names <- cbind(item_names, as.data.frame(fit.km_21$cluster))
+item_names <- cbind(item_names, as.data.frame(fit.km$cluster))
 colnames(item_names)[4] <- "cluster"
 
 ### 2. 군집 - 종목 - 원자재 list
-cluster_item_resource <- list()
+cluster_item_Material <- list()
 for(i in 1:21){
-  cluster_item_resource[[i]] <- list(item = which(fit.km_21$cluster == i),
-                                     material = which(what_resource_to_cluster[i,] == 1))
+  cluster_item_Material[[i]] <- list(item = which(fit.km$cluster == i),
+                                     material = which(what_Material_to_cluster[i,] == 1))
 }
-cluster_item_resource
-cluster_item_resource[[21]][1]
-cluster_item_resource[[21]][2]
+cluster_item_Material
+cluster_item_Material[[21]][1]
+cluster_item_Material[[21]][2]
+
+
+for (i in 1:length(Material_code$codeNum)){
+  assign(paste("Material",i,sep = "_"),
+         as.data.frame(matrix(rep(unlist(Material[i+1]),120), ncol = 120, nrow = 204,
+                              dimnames = list(1:204, as.character(item_strsplit$X1)))))
+}
+
+for (i in 1:length(Material_code$codeNum)){
+  assign(paste("Material",i,"normalize", sep = "_"),
+         as.data.frame(apply(get(paste("Material",i,sep = "_")),2,normalize)))
+}
+
 
 cluster1_resource <- which(what_resource_to_cluster[1,] == 1)
 cluster2_resource <- which(what_resource_to_cluster[2,] == 1)
