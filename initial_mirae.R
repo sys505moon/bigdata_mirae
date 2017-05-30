@@ -221,7 +221,6 @@ normalize <- function(x){
   return((x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE)))
 }
 
-  
   # item bundle using sector data
 IT_index <- which(item_names$sector == "Information Technology")
 Finan_index <- which(item_names$sector == "Financials")
@@ -251,40 +250,16 @@ for(i in 1:nrow(dividend_tendency_normalize)){
 dividend_rate_normalize <- as.data.frame(lapply(dividend_rate[2:121], normalize))
 resource_normalize <- as.data.frame(lapply(resource[c(2:40,80,81)], normalize))
 
- # sector : Information Technology
 
-IT_end_price <- t(end_price_normalize[IT_index]) # y
-
-IT_high_price <- t(high_price_normalize[IT_index]) # x1
-IT_low_price <- t(low_price_normalize[IT_index]) # x2
-IT_volume <- t(volume_normalize[IT_index]) # x3
-IT_market_capital <- t(market_capital_normalize[IT_index]) # x4
-IT_dividend_tendency <- t(dividend_tendency_normalize[IT_index]) # x5
-IT_dividend_rate <- t(dividend_rate_normalize[IT_index]) # x6
-
-IT_x <- array(c(IT_high_price, IT_low_price, IT_volume, IT_market_capital, IT_dividend_tendency, IT_dividend_rate), dim = c(dim(IT_high_price), 6))
-IT_y <- array(IT_end_price, dim = dim(IT_end_price))
-
-
-all <- 1:ncol(IT_end_price)
-train <- 1:round(ncol(IT_end_price)*0.7)
-test <- seq(round(ncol(IT_end_price)*0.7)+1, ncol(IT_end_price))
-
-IT_model <- trainr_JH(Y = IT_y[,, drop = F],
-                      X = IT_x[,,, drop = F],
-                      learningrate = 0.035,
-                      hidden_dim = 14,
-                      batch_size = 1,
-                      numepochs = 100)
-
+# 클러스터 군집의 관련 원자재 data index 
+for(i in 1:length(sort(unique(item_names$cluster)))){
+  assign(paste("index", i, sep = "_"),
+         which(item_names$cluster == i))
+}
 
  # RNN model_2
 sector_name = as.character(unique(item_names$sector))
 short_sector_name = c("IT", "Finan", "CD", "Health", "Energy", "Indust", "Telecom", "CS", "Material", "Utility", "Estate")
-
-# item_strsplit$X1[which(item_names$sector == sector_name[1])]
-# length(item_strsplit$X1[which(item_names$sector == sector_name[1])])
-# end_price_normalize[which(item_names$sector == sector_name[1])]
 
  # Item name and data length(except NA) bundle in CLUSTER
 for(i in 1:length(short_sector_name)){
@@ -296,49 +271,41 @@ for(i in 1:length(short_sector_name)){
              -sum(is.na(end_price_normalize[which(item_names$sector == sector_name[i])][j]))))
   }
 }
+
+
+
   
-# sub_x <- c("end_price_normalize", "high_price_normalize", "low_price_normalize", "volume_normalize",  "market_capital_normalize", "dividend_rate_normalize", "dividend_tendency_normalize")
+# 주 변수
 sub_x <- c("end_price_normalize", "high_price_normalize", "low_price_normalize", "volume_normalize",  "market_capital_normalize")
 
-# for(k in 1:length(sub_x)){
-#   a <- get(sub_x[k])
-#   for(i in 1:120){
-#     for(j in 1:203){
-#       if(is.na(a)[j,i]){
-#         a[j,i] <- 0
-#       }
-#     }
-#   }
-#   assign(sub_x[k], a)
-#   print(paste(k,"번쨰 완료"))
-# }
 
-# is.zero <- function(x){
-#   return(x == 0)
-# }
+# RNN 실행 함수
 
-RunRNN <- function(){
-  for(i in 1:length(short_sector_name)){
+RunRNN <- function(epoch){
+  for(i in 1:length(unique(item_names$cluster))){
     print(paste("i = ", i, "시작"))
     mrm_index <- data.frame(length = apply(end_price_normalize, 2 , function(x){nrow(end_price_normalize)-sum(is.na(x))}),
                             name = item_strsplit$X1)
     mrm_index <- mutate(mrm_index, index = 1:120)
-    mrm_index <- mrm_index[get(paste(short_sector_name[i], "index", sep = "_")),]
+    mrm_index <- mrm_index[get(paste("index", i, sep = "_")),]
+    NA_num <- data.frame(NA_Num = apply(end_price_normalize, 2 , function(x){sum(is.na(x))}))
+    NA_num <- transform(NA_num, index = 1:ncol(end_price_normalize))
     for(j in 1:length(unique(mrm_index$length))){
       print(paste("j = ", j, "시작"))
       # Making input data 
-                                           # sort(unique(mrm_index$length), decreasing = T)[1]
-        # sub_x 변수 생성
+      # sort(unique(mrm_index$length), decreasing = T)[1]
+      # sub_x 변수 생성
       sub_x_box = c()
+      material_box = c()
       for(k in 1:(length(sub_x))){
         if(k == 1){
           assign(paste("x", k, sep = "_"),
                  t(get(sub_x[k])[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])$index])[,(204-sort(unique(mrm_index$length), decreasing = T)[j]+2):204, drop = F]
-                 )
+          )
         }else{
           assign(paste("x", k, sep = "_"),
                  t(get(sub_x[k])[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])$index])[,(204-sort(unique(mrm_index$length), decreasing = T)[j]+1):203, drop = F]
-                 )
+          )
         }
         print(paste("    k =", k, "완료"))
         print(dim(get(paste("x", k, sep = "_"))))
@@ -350,47 +317,77 @@ RunRNN <- function(){
         }
       }
       
+      # 원자재 변수 생성
+      if(length(unlist(cluster_item_Material[[i]][2])) > 0){
+        for(l in 1:length(unlist(cluster_item_Material[[i]][2]))){
+          print(l)
+          assign(paste("x", length(sub_x)+l, sep = "_"),
+                 t(get(paste("Material", unlist(cluster_item_Material[[i]][2])[l], "normalize", sep = "_"))[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])$index])[,(204-sort(unique(mrm_index$length), decreasing = T)[j]+1):203, drop = F]
+          ) # 구영이 리스트 보고 수정
+          material_box <- c(material_box, get(paste("x", length(sub_x)+l, sep = "_")))
+        }
+      }
+  
+  
+      # 혹시모를 NA 처리 / dim = (sort(unique(mrm_index$length), decreasing = T)[j]) X 클러스터에 속한 sample 수
       
-        # 원자재 변수 생성
-      material_box = c()
-      # for(l in 1:length("클러스터")){
-      #   assign(paste("x", length(sub_x)+l, sep = "_"),
-      #          get("클러스터")[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j])$index]
-      #          ) # 구영이 리스트 보고 수정
-      #   material_box <- c(mateial_box, get(paste("x", length(sub_x)+l, sep = "_")))
-      # }
-      # 
-        # 혹시모를 NA 처리 / dim = (sort(unique(mrm_index$length), decreasing = T)[j]) X 클러스터에 속한 sample 수
-      
-      # x <- array(c(sub_x_box, material_box), dim = c(dim(x_1), length(sub_x_box)+length(material_box)))
-      x <- array(c(sub_x_box, material_box), dim = c(dim(x_2), k+l))
-      y <- array(x_1, dim = dim(x_2))
-      
+      x <- array(c(sub_x_box, material_box), dim = c(dim(x_2), length(sub_x)+length(unlist(cluster_item_Material[[i]][2]))))
+      # x <- array(c(sub_x_box, material_box), dim = c(dim(x_2), k+l))
+      if(dim(x_1)[2] >= 47){
+        y <- array(x_1, dim = c(dim(x_1),1))
+      }else{
+        next()
+      }
       # Making RNN model
       
-      train <- 1:(round(sort(unique(mrm_index$length), decreasing = T)[j]-1)*0.8)
-      test <- seq(1:(round(sort(unique(mrm_index$length), decreasing = T)[j]-1)))[-train]
+      # train <- 1:(round(sort(unique(mrm_index$length), decreasing = T)[j]-1)*0.8)
+      # test <- seq(1:(round(sort(unique(mrm_index$length), decreasing = T)[j]-1)))[-train]
+      if(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1] == 0){
+        train = 1:155
+        test = 156:203
+        
+        
+      }else{
+        train = 1:(156-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1))
+        test = (156-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1)+1):(203-NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1])
+    
+        
+      }
       
-      assign(paste(short_sector_name[i], "RNN_model", j, sep = "_"),
-             trainr(Y = y[,train, drop = F],
+      # if(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1] == 0){
+      #   x_train = 1:155
+      #   x_test = 156:203
+      #   y_train = 1:155
+      #   y_test = 156:203
+      # }else{
+      #   x_train = 1:(156-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1))
+      #   x_test = (156-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1)):(203-NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1])
+      #   y_train = 1:(156-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1))
+      #   y_test = (157-NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1):(204-(NA_num[filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[j][1])$index[1],1]+1))
+      # }
+      
+      assign(paste(paste("index", i, sep = "_"), "RNN_model", j, sep = "_"),
+             trainr(Y = y[,train,, drop = F],
                     X = x[,train,, drop = F],
                     learningrate = 0.035,
                     hidden_dim = 14,
                     batch_size = 1,
-                    numepochs = 3600))
+                    numepochs = epoch))
       
-      assign(paste(short_sector_name[i], "RNN_predict", j, sep = "_"),
-             predictr(get(paste(short_sector_name[i], "RNN_model", j, sep = "_")),
-                      X = x[,test,, drop = F]))
-      assign(paste(short_sector_name[i], "evaluation", j, sep = "_"),
-             data.frame(error = (y[,test])-get(paste(short_sector_name[i], "RNN_predict", j, sep = "_"))))
+      assign(paste(paste("index", i, sep = "_"), "RNN_predict", j, sep = "_"),
+             predictr(get(paste(paste("index", i, sep = "_"), "RNN_model", j, sep = "_")),
+                      X = x[,test,, drop = F]),
+             envir = .GlobalEnv)
+      assign(paste(paste("index", i, sep = "_"), "evaluation", j, sep = "_"),
+             data.frame(error = (y[,test,])-get(paste(paste("index", i, sep = "_"), "RNN_predict", j, sep = "_"))),
+             envir = .GlobalEnv)
       print(paste("  j =", j, "완료"))
     }
     print(paste("i =", i, "완료"))
   }
 }
 
-system.time(RunRNN())
+system.time(RunRNN(3600))
 
 # data merge by sector
 
@@ -490,13 +487,167 @@ low_max_min <- data.frame(max = apply(low_price[2:121], 2, max, na.rm = TRUE), m
 volume_max_min <- data.frame(max = apply(volume[2:121], 2, max, na.rm = TRUE), min = apply(volume[2:121], 2, min, na.rm = TRUE))
 market_max_min <- data.frame(max = apply(market_capital[2:121], 2, max, na.rm = TRUE), min = apply(market_capital[2:121], 2, min, na.rm = TRUE))
 
-# denormalize <- function(x, row_data){
-#   return(x*(row_data[42])-min(x, na.rm = TRUE))+min(x, na.rm = TRUE)
-# }
+
+  # index_i data result
+
+for(p in 1:length(unique(item_names$cluster))){
+  mrm_index <- data.frame(length = apply(end_price_normalize, 2 , function(x){nrow(end_price_normalize)-sum(is.na(x))}),
+                          name = item_strsplit$X1)
+  mrm_index <- mutate(mrm_index, index = 1:120)
+  mrm_index <- mrm_index[get(paste("index", p, sep = "_")),]
+  for(q in 1:length(unique(mrm_index$length))){
+    if(sort(unique(mrm_index$length), decreasing = T)[q] > 47){
+      a <- filter(mrm_index, length == sort(unique(mrm_index$length), decreasing = T)[q])
+      assign(paste("index", p, "RNN_predict", q, sep = "_"),
+             transform(get(paste("index", p, "RNN_predict", q, sep = "_")), name = a$name, index = a$index))
+    }
+  }
+}
 
 
-# install.packages('sigmoid')
-# library(sigmoid)
+ # convert 'predict' file type : matrix to data.frame
+
+for(p in 1:length(sort(unique(item_names$cluster)))){
+  mrm_index <- data.frame(length = apply(end_price_normalize, 2 , function(x){nrow(end_price_normalize)-sum(is.na(x))}),
+                          name = item_strsplit$X1)
+  mrm_index <- mutate(mrm_index, index = 1:120)
+  mrm_index <- mrm_index[get(paste("index", p, sep = "_")),]
+  for(q in 1:length(unique(mrm_index$length))){
+    if(sort(unique(mrm_index$length), decreasing = T)[q] > 47){
+      assign(paste("index", p, "RNN_predict", q, sep = "_"),
+             as.data.frame(get(paste("index", p, "RNN_predict", q, sep = "_"))))
+      }
+  }
+}
+
+
+# result analysis
+  # Select "data length > 47"
+mrm_index <- data.frame(length = apply(end_price_normalize, 2 , function(x){nrow(end_price_normalize)-sum(is.na(x))}),
+                        name = item_strsplit$X1)
+mrm_index <- mutate(mrm_index, index = 1:120)
+Over47length <- filter(mrm_index, length > 47)
+end_max_min <- mutate(end_max_min, index = 1:120)
+Over47length<- merge(Over47length, end_max_min, by = "index")
+write.csv(Over47length, "Over47length.csv")
+
+# 
+# 
+# index_1_predict <- bind_rows(index_1_RNN_predict_1)
+# write.csv(index_1_predict, "index_1_predict.csv")
+# index_2_predict <- bind_rows(index_2_RNN_predict_1, index_2_RNN_predict_2)
+# write.csv(index_2_predict, "index_2_predict.csv")
+# index_3_predict <- bind_rows(index_3_RNN_predict_1, index_3_RNN_predict_2)
+# write.csv(index_3_predict, "index_3_predict.csv")
+# index_4_predict <- bind_rows(index_4_RNN_predict_1)
+# write.csv(index_4_predict, "index_4_predict.csv")
+# index_5_predict <- bind_rows(index_5_RNN_predict_1)
+# write.csv(index_5_predict, "index_5_predict.csv")
+# index_6_predict <- bind_rows(index_6_RNN_predict_1)
+# write.csv(index_6_predict, "index_6_predict.csv")
+# index_7_predict <- bind_rows(index_7_RNN_predict_1)
+# write.csv(index_7_predict, "index_7_predict.csv")
+# index_8_predict <- bind_rows(index_8_RNN_predict_1, index_8_RNN_predict_2, index_8_RNN_predict_3, index_8_RNN_predict_4)
+# write.csv(index_8_predict, "index_8_predict.csv")
+# index_9_predict <- bind_rows(index_9_RNN_predict_1)
+# write.csv(index_9_predict, "index_9_predict.csv")
+# index_10_predict <- bind_rows(index_10_RNN_predict_1, index_10_RNN_predict_2)
+# write.csv(index_10_predict, "index_10_predict.csv")
+# index_11_predict <- bind_rows(index_11_RNN_predict_1)
+# write.csv(index_11_predict, "index_11_predict.csv")
+# index_12_predict <- bind_rows(index_12_RNN_predict_1)
+# write.csv(index_12_predict, "index_12_predict.csv")
+# index_13_predict <- bind_rows(index_13_RNN_predict_1, index_13_RNN_predict_2, index_13_RNN_predict_3, index_13_RNN_predict_4, index_13_RNN_predict_5)
+# write.csv(index_13_predict, "index_13_predict.csv")
+# index_14_predict <- bind_rows(index_14_RNN_predict_1)
+# write.csv(index_14_predict, "index_14_predict.csv")
+# index_15_predict <- bind_rows(index_15_RNN_predict_1, index_15_RNN_predict_2)
+# write.csv(index_15_predict, "index_15_predict.csv")
+# index_16_predict <- bind_rows(index_16_RNN_predict_1, index_16_RNN_predict_2)
+# write.csv(index_16_predict, "index_16_predict.csv")
+# index_17_predict <- bind_rows(index_17_RNN_predict_1)
+# write.csv(index_17_predict, "index_17_predict.csv")
+# index_18_predict <- bind_rows(index_18_RNN_predict_1, index_18_RNN_predict_2, index_18_RNN_predict_3, index_18_RNN_predict_4, index_18_RNN_predict_5)
+# write.csv(index_18_predict, "index_18_predict.csv")
+# index_19_predict <- bind_rows(index_19_RNN_predict_1)
+# write.csv(index_19_predict, "index_19_predict.csv")
+# index_20_predict <- bind_rows(index_20_RNN_predict_1, index_20_RNN_predict_2, index_20_RNN_predict_3, index_20_RNN_predict_4)
+# write.csv(index_20_predict, "index_20_predict.csv")
+# index_21_predict <- bind_rows(index_21_RNN_predict_1, index_21_RNN_predict_2)
+# write.csv(index_21_predict, "index_21_predict.csv")
+
+
+index_1_predict <- bind_rows(index_1_RNN_predict_1)
+write.csv(index_1_predict, "index_1_predict.csv")
+index_2_predict <- bind_rows(index_2_RNN_predict_1, index_2_RNN_predict_2)
+write.csv(index_2_predict, "index_2_predict.csv")
+index_3_predict <- bind_rows(index_3_RNN_predict_1, index_3_RNN_predict_2)
+write.csv(index_3_predict, "index_3_predict.csv")
+# index_4_predict <- bind_rows(index_4_RNN_predict_1)
+# write.csv(index_4_predict, "index_4_predict.csv")
+index_5_predict <- bind_rows(index_5_RNN_predict_1)
+write.csv(index_5_predict, "index_5_predict.csv")
+index_6_predict <- bind_rows(index_6_RNN_predict_1)
+write.csv(index_6_predict, "index_6_predict.csv")
+index_7_predict <- bind_rows(index_7_RNN_predict_1)
+write.csv(index_7_predict, "index_7_predict.csv")
+index_8_predict <- bind_rows(index_8_RNN_predict_1, index_8_RNN_predict_2, index_8_RNN_predict_3, index_8_RNN_predict_4)
+write.csv(index_8_predict, "index_8_predict.csv")
+index_9_predict <- bind_rows(index_9_RNN_predict_1)
+write.csv(index_9_predict, "index_9_predict.csv")
+index_10_predict <- bind_rows(index_10_RNN_predict_1, index_10_RNN_predict_2)
+write.csv(index_10_predict, "index_10_predict.csv")
+# index_11_predict <- bind_rows(index_11_RNN_predict_1)
+# write.csv(index_11_predict, "index_11_predict.csv")
+index_12_predict <- bind_rows(index_12_RNN_predict_1)
+write.csv(index_12_predict, "index_12_predict.csv")
+index_13_predict <- bind_rows(index_13_RNN_predict_1, index_13_RNN_predict_2)
+write.csv(index_13_predict, "index_13_predict.csv")
+index_14_predict <- bind_rows(index_14_RNN_predict_1)
+write.csv(index_14_predict, "index_14_predict.csv")
+index_15_predict <- bind_rows(index_15_RNN_predict_1, index_15_RNN_predict_2)
+write.csv(index_15_predict, "index_15_predict.csv")
+index_16_predict <- bind_rows(index_16_RNN_predict_1, index_16_RNN_predict_2)
+write.csv(index_16_predict, "index_16_predict.csv")
+index_17_predict <- bind_rows(index_17_RNN_predict_1)
+write.csv(index_17_predict, "index_17_predict.csv")
+index_18_predict <- bind_rows(index_18_RNN_predict_1, index_18_RNN_predict_2, index_18_RNN_predict_3, index_18_RNN_predict_4, index_18_RNN_predict_5)
+write.csv(index_18_predict, "index_18_predict.csv")
+# index_19_predict <- bind_rows(index_19_RNN_predict_1)
+# write.csv(index_19_predict, "index_19_predict.csv")
+index_20_predict <- bind_rows(index_20_RNN_predict_1, index_20_RNN_predict_2, index_20_RNN_predict_3, index_20_RNN_predict_4)
+write.csv(index_20_predict, "index_20_predict.csv")
+index_21_predict <- bind_rows(index_21_RNN_predict_1, index_21_RNN_predict_2)
+write.csv(index_21_predict, "index_21_predict.csv")
+
+
+# 
+# All_index_predict <- bind_rows(index_1_predict, index_2_predict, index_3_predict, index_4_predict, index_5_predict, index_6_predict,
+#                                index_7_predict, index_8_predict, index_9_predict, index_10_predict, index_11_predict, index_12_predict,
+#                                index_13_predict, index_14_predict, index_15_predict, index_16_predict, index_17_predict, index_18_predict,
+#                                index_19_predict, index_20_predict, index_21_predict)
+# write.csv(All_index_predict, "All_index_predict.csv")
+
+
+All_index_predict <- bind_rows(index_1_predict, index_2_predict, index_3_predict, index_5_predict, index_6_predict,
+                               index_7_predict, index_8_predict, index_9_predict, index_10_predict, index_12_predict,
+                               index_13_predict, index_14_predict, index_15_predict, index_16_predict, index_17_predict, index_18_predict,
+                               index_20_predict, index_21_predict)
+write.csv(All_index_predict, "All_index_predict.csv")
+
+
+end_max_min <- data.frame(max = apply(end_price[2:121], 2, max, na.rm = TRUE), min = apply(end_price[2:121], 2, min, na.rm = TRUE))
+
+
+all <- fread("All_index_result.csv")
+
+write.csv(end_max_min, "end_max_min.csv")
+
+
+
+
+
+
 
 
 # data_View
@@ -647,7 +798,7 @@ Material_r_cut <- function(x){
 ### cut하고 싶은 value 입력 - 지금은 0이 아닌 셀들의 평균 입력함
 Material_r_cut(0.6217685)
 # View(what_Material_to_cluster)
-View(data.frame(apply(what_Material_to_cluster, 2, function(x){sum(x)})))
+# View(data.frame(apply(what_Material_to_cluster, 2, function(x){sum(x)})))
 ##### 군집별 종목 - 원자재 
 
 ### 1. 군집 index 추가
@@ -661,6 +812,7 @@ for(i in 1:21){
                                      material = which(what_Material_to_cluster[i,] == 1))
 }
 cluster_item_Material
+cluster_item_Material[[13]][2]
 cluster_item_Material[[21]][1]
 cluster_item_Material[[21]][2]
 
@@ -674,6 +826,21 @@ for (i in 1:length(Material_code$codeNum)){
 for (i in 1:length(Material_code$codeNum)){
   assign(paste("Material",i,"normalize", sep = "_"),
          as.data.frame(apply(get(paste("Material",i,sep = "_")),2,normalize)))
+}
+
+# 원자재 변수들 NA -> 0 변환
+for(k in 1:length(Material_code$codeNum)){
+  b <- paste("Material",k,"normalize", sep = "_")
+  a <- get(paste("Material",k,"normalize", sep = "_"))
+  for(i in 1:120){
+    for(j in 1:203){
+      if(is.na(a[j,i])){
+        a[j,i] <- 0
+      }
+    }
+  }
+  assign(b, a)
+  print(paste(k,"번쨰 완료"))
 }
 
 
